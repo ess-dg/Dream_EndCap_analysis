@@ -15,4 +15,4 @@ The /documentation/ directory contains some documentation relevant to the experi
 
 The /src/ directory contains three C++ files that read out the binary data files, outputs the event information in ascii format. this ascii file will be use to create a ROOT raw event tree. The data analysis will be perfomed on the raw event tree and will consists  of corrections of the time-of-flights and mapping of the anode and cathode IDs with the x, y, z positions of the detector voxels calculated in the EndCap simulation project (with GEANT4).   
 
-Additional information on the data format and analysis is given inside the directories. 
+Additional information on the data format and analysis is given inside the directories and as comments inside the codes. 
