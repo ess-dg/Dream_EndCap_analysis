@@ -1,12 +1,10 @@
 include_directories(.)
 
-set(cdt_library)
-add_library(${cdt_library} SHARED analysis_cdt.C CreateCDTTree.C)
-target_link_libraries(${cdt_library} ${ROOT_LIBRARIES})
+set(cdt_library_name "cdt_library")
+add_library(${cdt_library_name} SHARED analysis_cdt.C CreateCDTTree.C)
+target_link_libraries(${cdt_library_name} ${ROOT_LIBRARIES})
 
-set(dea_src
-   read_bin_irina.cpp
-)
+set(dea_src read_bin_irina.cpp)
 
 set(exec_name "read_bin_irina")
 add_executable(
