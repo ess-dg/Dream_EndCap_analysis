@@ -2,11 +2,14 @@
 #include "TH1.h"
 #include "TH3.h"
 #include "TMath.h"
+#include "TTree.h"
+#include "TFile.h"
 #include "TSystem.h"
 #include "TRandom.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include </Library/Developer/CommandLineTools/usr/include/c++/v1/iostream>
+#include </Library/Developer/CommandLineTools/usr/include/c++/v1/fstream>
 
 //Usage: .L CreateCDTTree.C /CreateCDTRootFile() 
 
@@ -44,18 +47,18 @@ Char_t a[5],b[15],c[5],d[5],e[5];
      fp=fopen(hname,"r");
      char line[128];
 
-	if (fp==NULL)
-	{
-//		printf("ERROR: Can't open file %s\n",fp);
-		return 0;
-	}
+    if(fp == NULL)
+       {
+      printf("Error opening the input file!");   
+      exit(1);             
+      }
     
       
     while (!feof(fp))
        {
         fscanf(fp,"%s %s %s %s %s",a,b,c,d,e);
         
-//        cout<<"a = "<<a<<", b = "<<b<<", c = "<<c<<", d = "<<d<<", e = "<<e<<endl;
+//        std::cout<<"a = "<<a<<", b = "<<b<<", c = "<<c<<", d = "<<d<<", e = "<<e<<std::endl;
         
         index = strtod(a,NULL);
                 
@@ -115,9 +118,9 @@ Char_t a[5],b[15],c[5],d[5],e[5];
 
     fclose(fp);
 	t->Write();
-	cout<<"Fill data tree...done"<<endl; 
-	cout<<"The data tree has "<<t->GetEntries()<<" entries."<<endl; 
-	cout<<"  "<<endl;
+	std::cout<<"Fill data tree...done"<<std::endl; 
+	std::cout<<"The data tree has "<<t->GetEntries()<<" entries."<<std::endl; 
+	std::cout<<"  "<<std::endl;
 	
 	
 	rf->Close();
@@ -126,4 +129,7 @@ Char_t a[5],b[15],c[5],d[5],e[5];
 
 }
 	
-	
+  int main() {
+  CreateCDTRootFile();  
+  return 0;
+   }
