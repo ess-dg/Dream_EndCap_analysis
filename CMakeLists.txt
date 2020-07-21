@@ -24,9 +24,21 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 
 # Locate the ROOT package and defines a number of variables (e.g. ROOT_INCLUDE_DIRS)
 find_package(ROOT REQUIRED)
+message(STATUS "ROOT_INCLUDE_DIRS: " ${ROOT_INCLUDE_DIRS})
 
 #---Define useful ROOT functions and macros (e.g. ROOT_GENERATE_DICTIONARY)
 include("${ROOT_USE_FILE}")
+
+# Hack introduced to support build on Irinas laptop
+if (NOT EXISTS ${ROOT_INCLUDE_DIRS})
+  message(STATUS "ROOT_INCLUDE_DIR path does not exist - trying ROOTSYS")
+  if (NOT EXISTS $ENV{ROOTSYS})
+    message(FATAL_ERROR " ROOTSYS path doesn't exist. Unable to proceed.")
+  endif()
+  set(ROOT_INCLUDE_DIRS $ENV{ROOTSYS}/include)
+  message(STATUS setting ROOT_INCLUDE_DIRS to ${ROOT_INCLUDE_DIRS})
+endif()
+
 
 
 #=============================================================================
@@ -38,6 +50,6 @@ add_subdirectory(src)
 # cmake summary
 #=============================================================================
 message(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
-message(STATUS "ROOT INCLUDE: " ${ROOT_INCLUDE_DIRS})
+message(STATUS "ROOT_INCLUDE_DIRS: " ${ROOT_INCLUDE_DIRS})
 message(STATUS "ROOT_USE_FILE: " ${ROOT_USE_FILE})
 message(STATUS "ROOT_SYS: " $ENV{ROOTSYS})
