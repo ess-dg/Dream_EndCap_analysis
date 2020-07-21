@@ -38,5 +38,6 @@ add_subdirectory(src)
 # cmake summary
 #=============================================================================
 message(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
+message(STATUS "ROOT INCLUDE: " ${ROOT_INCLUDE_DIRS})
 message(STATUS "ROOT_USE_FILE: " ${ROOT_USE_FILE})
 message(STATUS "ROOT_SYS: " $ENV{ROOTSYS})
