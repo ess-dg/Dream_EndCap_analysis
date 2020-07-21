@@ -2,7 +2,12 @@
 #include "TH1.h"
 #include "TH3.h"
 #include "TMath.h"
+#include "TTree.h"
+#include "TFile.h"
 #include "TSystem.h"
+#include "TCanvas.h"
+#include "TLeaf.h"
+#include "TStyle.h"
 #include "TRandom.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -64,14 +69,14 @@ tree->SetBranchAddress("cathode",&cathode);
 // New event tree for the 'calibrated events'
 
 if ((TTree*) file->Get("cdt_new"))
-	{cout<<"Found an old tree, I am going to delete it!"<<endl; 
+	{std::cout<<"Found an old tree, I am going to delete it!"<<std::endl; 
 	 gDirectory->Delete("cdt_new");
-	 cout<<"....Done!"<<endl; cout<<" "<<endl; }
+	 std::cout<<"....Done!"<<std::endl; std::cout<<" "<<std::endl; }
 	
-cout<<"now I am going to create the new tree!"<<endl; 
+std::cout<<"now I am going to create the new tree!"<<std::endl; 
 TTree* newt=new TTree("cdt_new","cdt_new");
-cout<<"....Done!"<<endl; 
-cout<<" "<<endl; 
+std::cout<<"....Done!"<<std::endl; 
+std::cout<<" "<<std::endl; 
      
 int ncathode,nanode,nmult,nsubID,nevent;
 int nmodule,nsumo,nw_layer,nstrip;
@@ -132,14 +137,14 @@ newt->Branch("ccycle",&ccycle,"ccycle/I");    // chopper cycle
 TFile* ffile = TFile::Open("cdt_new_cal.root","recreate");
 
 if ((TTree*) ffile->Get("cdt_new_cal"))
-	{cout<<"Found an old cal tree, I am going to delete it!"<<endl; 
+	{std::cout<<"Found an old cal tree, I am going to delete it!"<<std::endl; 
 	 gDirectory->Delete("cdt_new_cal");
-	 cout<<"....Done!"<<endl; cout<<" "<<endl; }
+	 std::cout<<"....Done!"<<std::endl; std::cout<<" "<<std::endl; }
 	
-cout<<"now I am going to create the new calibration tree!"<<endl; 
+std::cout<<"now I am going to create the new calibration tree!"<<std::endl; 
 TTree* fnewt=new TTree("cdt_new_cal","cdt_new_cal");
-cout<<"....Done!"<<endl; 
-cout<<" "<<endl; 
+std::cout<<"....Done!"<<std::endl; 
+std::cout<<" "<<std::endl; 
 
 double rad_c,lambda_c,lambda_c_wfm_corr,twotheta_c,phi_c,ntof_c;
 double nvoxel_x,nvoxel_y,nvoxel_z,nangle;
@@ -193,7 +198,7 @@ for (Long64_t i=0; i<=nevents; i++){
         vchopperTime[i] = chopperTime;     
         vsubID[i] = subID;       
 
-//      cout<<"sumo ="<<vsumo[i]<<", module ="<<vmodule[i]<<" , boardID ="<<boardID<<endl;
+//      std::cout<<"sumo ="<<vsumo[i]<<", module ="<<vmodule[i]<<" , boardID ="<<boardID<<std::endl;
                 
       if (i%100000 == 0) printf("reading procent out the original tree.....%2.3f\n",i*100./nevents);  
 	
@@ -335,10 +340,10 @@ for (Long64_t i=0; i<=nevents; i++){
 		
 
 	newt->Write(0,TObject::kOverwrite); //because I don't want to create a new key for the new tree every time I execute the code
-	cout<<"Writing the new cal tree...done"<<endl; 
+	std::cout<<"Writing the new cal tree...done"<<std::endl; 
 	
-	cout<<"number of entries in the new tree is "<<newt->GetEntries()<<endl; 
-	cout<<" "<<endl; 
+	std::cout<<"number of entries in the new tree is "<<newt->GetEntries()<<std::endl; 
+	std::cout<<" "<<std::endl; 
 	
 	delete[] vanode; delete[] vcathode; delete[] vsumo; delete[] vmodule; delete[] vboardID; delete[] vsubID;
 	delete[] vchopperTime; delete[] vtime;
@@ -411,8 +416,8 @@ for (Long64_t i=0; i<=nevents; i++){
 	    	    
  	    ltree->GetEntry(ev);
 		
-//	        cout<<"event number in lookup rootfile = "<<ev<<endl;
-//	        cout<<"event number in cdt rootfile = "<<k<<endl;
+//	        std::cout<<"event number in lookup rootfile = "<<ev<<std::endl;
+//	        std::cout<<"event number in cdt rootfile = "<<k<<std::endl;
 	     
 	     ffile->cd();
 
@@ -423,7 +428,7 @@ for (Long64_t i=0; i<=nevents; i++){
 	     nvoxel_z = mz->GetValue(0);	
 	     nc = zza->GetValue(0);	
 	     
-//	     cout<<"x ="<<mx->GetValue(0)<<", y ="<< my->GetValue(0)<<", z ="<<mz->GetValue(0)<<endl; 
+//	     std::cout<<"x ="<<mx->GetValue(0)<<", y ="<< my->GetValue(0)<<", z ="<<mz->GetValue(0)<<std::endl; 
 
 // calculate the distance from the voxel centre to the sample
 	
@@ -461,10 +466,10 @@ for (Long64_t i=0; i<=nevents; i++){
 	
 	ffile->cd(); 
 	fnewt->Write(0,TObject::kOverwrite); //because I don't want to create a new key for the new tree every time I execute the code
-	cout<<"Writing the new cal tree...done"<<endl; 
+	std::cout<<"Writing the new cal tree...done"<<std::endl; 
 	
-	cout<<"number of entries in the new tree is "<<noev<<endl; 
-	cout<<" "<<endl; 
+	std::cout<<"number of entries in the new tree is "<<noev<<std::endl; 
+	std::cout<<" "<<std::endl; 
 	
 // the are ROOT command lines to plot various branches 
 
@@ -481,6 +486,56 @@ for (Long64_t i=0; i<=nevents; i++){
 //		cdt_new->Draw("nvoxel_y:nvoxel_z>>tt(500,-1600,-1100,1000,200,1200)","","colz")
 //		cdt_new->Draw("nvoxel_y:nvoxel_x>>tt(300,-100,200,1000,200,1200)","","colz")
 
+// *************and some automatic plotting 
+	
+	
+	TCanvas *can=new TCanvas("can","can",100,100,700,700);
 
+	gStyle->SetOptTitle(1);
+	gStyle->SetOptStat(1);
+
+	can->SetFillColor(0);
+	can->SetGrid();
+	Float_t small=1e-5;
+
+	can->Divide(1,3,small,small);
+	can->ToggleEventStatus();
+	
+	can->cd(1);
+	newt->Draw("ntof_wfm/10000>>tt(800,-1,80)","","");
+//	newt->Draw("ncathode:nanode","nsumo==3","colz");
+	can->cd(2);
+	newt->Draw("ntof_wfm_corr/10000>>tt1(800,-1,80)","","");
+	can->cd(3);
+	newt->Draw("ntof/10000>>tt2(1000,1,100)","","");
+//	newt->Draw("ncathode:nanode","nsumo==4","colz");
+//	can->cd(3);
+//	newt->Draw("ncathode:nanode","nsumo==5","colz");
+//	can->cd(4);
+//	newt->Draw("ncathode:nanode","nsumo==6","colz");
+
+/*	TCanvas *canT=new TCanvas("canT","canT",100,100,800,800);
+
+	gStyle->SetOptTitle(1);
+	gStyle->SetOptStat(1);
+
+	canT->SetFillColor(0);
+	canT->SetGrid();
+
+	canT->Divide(2,2,small,small);
+	
+	canT->cd(1);
+	newt->Draw("(ntime-nchopperTime)/10e6>>tt(2000,-0.1,0.1)","nboardID==1418045");
+	canT->cd(2);
+	newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416964");
+	canT->cd(3);
+	newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416799");
+	canT->cd(4);
+	newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416697");*/
 
 }
+
+  int main() {
+  analysis();  
+  return 0;
+   }
