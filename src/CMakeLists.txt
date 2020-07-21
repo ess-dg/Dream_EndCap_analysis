@@ -1,17 +1,28 @@
 include_directories(.)
 
-set(cdt_library_name "cdt_library")
-add_library(${cdt_library_name} SHARED analysis_cdt.C CreateCDTTree.C)
-target_link_libraries(${cdt_library_name} ${ROOT_LIBRARIES})
 
-set(dea_src read_bin_irina.cpp)
+set(read_bin_name "read_bin_irina")
+set(analysis_name "analysis")
+set(rootfile_name "rootfile")
+set( EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin )
 
-set(exec_name "read_bin_irina")
-add_executable(
-  ${exec_name} ${dea_src}
-)
+#
+# Build read_bin
+set(read_bin_src read_bin_irina.cpp)
+add_executable( ${read_bin_name} ${read_bin_src} )
 
-set_target_properties(${exec_name} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-install(TARGETS ${exec_name} DESTINATION bin)
+#
+# analysis
+set(analysis_src analysis_cdt.cpp)
+add_executable(${analysis_name} ${analysis_src})
+target_link_libraries(${analysis_name} RIO Vc Core Tree Gpad)
+
+
+#
+# create tree
+set(rootfile_src CreateCDTTree.cpp)
+add_executable(${rootfile_name} ${rootfile_src})
+target_link_libraries(${rootfile_name} RIO Vc Core Tree)
+
+install(TARGETS ${read_bin_name} ${analysis_name} ${rootfile_name} DESTINATION bin)
