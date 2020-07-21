@@ -46,18 +46,18 @@ I made minimal changes to the original code. I just added a few lines to save th
 
 The output file has the the following format:
 
-1     | 1416799    | -1    | -1    | -1
-111   | 362001     |  7    | 31    |  0
-1     | 1416697    | -1    | -1    | -1
-111   | 334762     | 51    | 36    |  0
-111   | 340573     | 74    | 16    |  0
-1     | 1416964    | -1    | -1    | -1  
-111   | 516611     | 17    |  7    |  0
-1     | 1416799    | -1    | -1    | -1  
-11    | 714833     |-10    | -10   | -10   
-1     | 1418045    | -1    | -1    | -1  
-11    | 714700     | -10   |  -10  |  -10   
-1     | 1416697    | -1    | -1    | -1  
+    1     1416799    -1    -1    -1
+    111   362001      7    31     0
+    1     1416697    -1    -1    -1
+    111   334762     51    36     0
+    111   340573     74    16     0
+    1     1416964    -1    -1    -1
+    111   516611     17     7     0
+    1     1416799    -1    -1    -1
+    11    714833    -10   -10   -10
+    1     1418045    -1    -1    -1
+    11    714700    -10   -10   -10
+    1     1416697    -1    -1    -1
 
 This file format helps with organising the event information in the root tree in the next step of the analysis.
 
