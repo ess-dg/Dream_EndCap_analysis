@@ -15,5 +15,3 @@ include("${ROOT_USE_FILE}")
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 
 add_subdirectory(src)
-
-message(STATUS "Root include" ${ROOT_INCLUDE_DIRS})

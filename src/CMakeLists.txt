@@ -3,7 +3,7 @@ include_directories(.)
 
 set(read_bin_name "read_bin_irina")
 set(analysis_name "analysis")
-set(rootfile_name "rootfile")
+set(rootfile_name "CreateCDTRootFile")
 set( EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin )
 
 #
