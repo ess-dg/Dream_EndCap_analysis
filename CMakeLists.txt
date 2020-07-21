@@ -39,6 +39,8 @@ if (NOT EXISTS ${ROOT_INCLUDE_DIRS})
   message(STATUS setting ROOT_INCLUDE_DIRS to ${ROOT_INCLUDE_DIRS})
 endif()
 
+include_directories(${ROOT_INCLUDE_DIRS})
+
 
 
 #=============================================================================
