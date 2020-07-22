@@ -400,7 +400,7 @@ void analysis() {
   // was the calculated voxels positions match the positions of the detector
   // voxels in the real detector.
 
-  TFile *lfile = TFile::Open("endcap_lookup.root", "read");
+  TFile *lfile = TFile::Open("endcap_lookup.root/endcap_lookup.root", "read");
 
   if (lfile->IsOpen())
     printf("endcap_lookup.root file created in GEANT4 opened successfully\n");

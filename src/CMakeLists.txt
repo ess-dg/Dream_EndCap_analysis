@@ -16,14 +16,14 @@ add_executable( ${read_bin_name} ${read_bin_src} )
 # analysis
 set(analysis_src analysis_cdt.cpp)
 add_executable(${analysis_name} ${analysis_src})
-target_link_libraries(${analysis_name} RIO Vc Core Tree Gpad)
+target_link_libraries(${analysis_name} RIO Core Tree Gpad)
 
 
 #
 # create tree
 set(rootfile_src CreateCDTTree.cpp)
 add_executable(${rootfile_name} ${rootfile_src})
-target_link_libraries(${rootfile_name} RIO Vc Core Tree)
+target_link_libraries(${rootfile_name} RIO Core Tree)
 
 install(TARGETS ${read_bin_name} ${analysis_name} ${rootfile_name} DESTINATION bin)
 
