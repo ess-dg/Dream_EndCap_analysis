@@ -25,11 +25,18 @@ const double mn = 1.674927471e-27; // in kg
 const double hp = 6.62607004e-34;  // in kg * m2/s
 const double m2a = 1e+10;          // unit to convert m in A
 
-void analysis() {
+void analysis(std::string filename) {
 
-  TFile *file = TFile::Open("cdt.root", "update");
+  TFile *file = TFile::Open(filename.c_str(), "update");
 
   TTree *tree = (TTree *)file->Get("cdt_ev");
+
+  if (tree == nullptr) {
+    printf("No cdt_ev entry in file, exiting ....\n");
+    file->Close();
+    delete(file);
+    return;
+  }
 
   const int nevents = tree->GetEntries();
 
@@ -232,7 +239,7 @@ void analysis() {
     //      ="<<boardID<<std::endl;
 
     if (i % 100000 == 0)
-      printf("reading procent out the original tree.....%2.3f\n",
+      printf("reading out the original tree.....%2.3f%%\n",
              i * 100. / nevents);
   }
 
@@ -347,7 +354,7 @@ void analysis() {
     }
 
     if (i % 100000 == 0)
-      printf("    now writing the new tree.....%2.3f\n", i * 100. / nevents);
+      printf("    now writing the new tree.....%2.3f%%\n", i * 100. / nevents);
   }
 
   // the nmult variable isn't working yet
@@ -400,7 +407,7 @@ void analysis() {
   // was the calculated voxels positions match the positions of the detector
   // voxels in the real detector.
 
-  TFile *lfile = TFile::Open("endcap_lookup.root/endcap_lookup.root", "read");
+  TFile *lfile = TFile::Open("endcap_lookup.root", "read");
 
   if (lfile->IsOpen())
     printf("endcap_lookup.root file created in GEANT4 opened successfully\n");
@@ -511,9 +518,9 @@ void analysis() {
   }
 
   ffile->cd();
-  fnewt->Write(
-      0, TObject::kOverwrite); // because I don't want to create a new key for
-                               // the new tree every time I execute the code
+
+  // Don't create a new key for the new tree every time the code is executed
+  fnewt->Write(0, TObject::kOverwrite);
   std::cout << "Writing the new cal tree...done" << std::endl;
 
   std::cout << "number of entries in the new tree is " << noev << std::endl;
@@ -581,7 +588,14 @@ void analysis() {
           newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416697");*/
 }
 
-int main() {
-  analysis();
+
+int main(int argc, char * argv[]) {
+  std::string filename{"cdt.root"};
+  if (argc == 2) {
+    filename = argv[1];
+  }
+  printf("Using filename %s\n", filename.c_str());
+
+  analysis(filename);
   return 0;
 }

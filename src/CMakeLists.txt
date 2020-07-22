@@ -28,4 +28,4 @@ target_link_libraries(${rootfile_name} RIO Core Tree)
 install(TARGETS ${read_bin_name} ${analysis_name} ${rootfile_name} DESTINATION bin)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/endcap_lookup.root
-        DESTINATION ${PROJECT_BINARY_DIR}/endcap_lookup.root)
+        DESTINATION ${PROJECT_BINARY_DIR})
