@@ -45,7 +45,6 @@ void CreateCDTRootFile() {
   FILE *fp;
   printf("Data file: %s\n", hname);
   fp = fopen(hname, "r");
-  char line[128];
 
   if (fp == NULL) {
     printf("Error opening the input file!");

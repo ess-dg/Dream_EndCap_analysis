@@ -11,6 +11,7 @@
 /// peace.
 //===----------------------------------------------------------------------===//
 
+#include <analysis_cdt.h>
 #include <TCanvas.h>
 #include <TFile.h>
 #include <TLeaf.h>
@@ -20,13 +21,76 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const double pi = 3.14159265;
-const double mn = 1.674927471e-27; // in kg
-const double hp = 6.62607004e-34;  // in kg * m2/s
-const double m2a = 1e+10;          // unit to convert m in A
 
-void analysis(std::string filename) {
 
+// Moved variables
+int nevents;
+
+// Tree-related
+TTree * tree{nullptr};
+Int_t cathode, anode, subID;
+Int_t module, sumo;
+UInt_t boardID;
+ULong64_t chopperTime, neutronTime;
+
+// newt related
+TTree * newt{nullptr};
+int ncathode, nanode, nmult, nsubID, nevent;
+int nmodule, nsumo, nw_layer, nstrip;
+int ncounter, nsegment, factor_a, factor_b, nwire;
+int nindexC, nindexS, ccycle;
+
+signed int nboardID;
+signed long int nchopperTime, ntime;
+signed long int ntof_wfm, tdiff_wfm, ntof, tdiff, ntof_wfm_corr;
+
+// fnewt related
+TTree * fnewt{nullptr};
+double rad_c, lambda_c, lambda_c_wfm_corr, twotheta_c, phi_c, ntof_c;
+double nvoxel_x, nvoxel_y, nvoxel_z, nangle;
+int csumo, nc, nikS, nikC;
+float dspacing_c_wfm, dspacing_c;
+
+// ltree relatd
+TTree * ltree{nullptr};
+
+
+// Should be in a struct ? allocated in allocateArrays()
+int *vanode;
+int *vcathode;
+int *vsubID;
+int *vsumo;
+int *vmodule;
+unsigned long int *vtime;
+unsigned long int *vchopperTime;
+unsigned int *vboardID;
+
+// End Moved
+
+void allocateArrays(int nevents) {
+  vanode = new int[nevents]();
+  vcathode = new int[nevents]();
+  vsubID = new int[nevents]();
+  vsumo = new int[nevents]();
+  vmodule = new int[nevents]();
+  vtime = new unsigned long int[nevents]();
+  vchopperTime = new unsigned long int[nevents]();
+  vboardID = new unsigned int[nevents]();
+}
+
+void deleteArrays() {
+  delete[] vanode;
+  delete[] vcathode;
+  delete[] vsubID;
+  delete[] vsumo;
+  delete[] vmodule;
+  delete[] vtime;
+  delete[] vchopperTime;
+  delete[] vboardID;
+}
+
+
+TTree * readFileCreateTree(std::string filename) {
   TFile *file = TFile::Open(filename.c_str(), "update");
 
   TTree *tree = (TTree *)file->Get("cdt_ev");
@@ -35,31 +99,12 @@ void analysis(std::string filename) {
     printf("No cdt_ev entry in file, exiting ....\n");
     file->Close();
     delete(file);
-    return;
+    return nullptr;
   }
 
-  const int nevents = tree->GetEntries();
+  nevents = tree->GetEntries();
+  allocateArrays(nevents);
 
-  int *vanode = new int[nevents]();
-  int *vcathode = new int[nevents]();
-  int *vsubID = new int[nevents]();
-  int *vsumo = new int[nevents]();
-  int *vmodule = new int[nevents]();
-  unsigned long int *vtime = new unsigned long int[nevents]();
-  unsigned long int *vchopperTime = new unsigned long int[nevents]();
-  unsigned int *vboardID = new unsigned int[nevents]();
-
-  Int_t seg, scopy, strip, voxel, coat;
-
-  Int_t n_wires = 16;
-  Int_t n_strips = 16;
-
-  Double_t energy, posx, posy, posz;
-  Int_t cathode, anode, subID;
-  Int_t module, sumo;
-  UInt_t boardID;
-  ULong64_t chopperTime, neutronTime;
-  Int_t mult, index;
 
   // Tree containing the raw events (created at the previous step by running
   // CreateCDTTree.C)
@@ -81,20 +126,16 @@ void analysis(std::string filename) {
     std::cout << "....Done!" << std::endl;
     std::cout << " " << std::endl;
   }
+  file->cd(); // moved from further down
+  return tree;
+}
 
+TTree * createNewTree() {
   std::cout << "now I am going to create the new tree!" << std::endl;
-  TTree *newt = new TTree("cdt_new", "cdt_new");
+  newt = new TTree("cdt_new", "cdt_new");
+  assert(newt != NULL);
   std::cout << "....Done!" << std::endl;
   std::cout << " " << std::endl;
-
-  int ncathode, nanode, nmult, nsubID, nevent;
-  int nmodule, nsumo, nw_layer, nstrip;
-  int ncounter, nsegment, factor_a, factor_b, nwire;
-  int nindexC, nindexS, ccycle;
-
-  signed int nboardID;
-  signed long int nchopperTime, ntime;
-  signed long int ntof_wfm, tdiff_wfm, ntof, tdiff, ntof_wfm_corr;
 
   /*    supported types in ROOT (reminder)
 
@@ -146,283 +187,63 @@ void analysis(std::string filename) {
   newt->Branch("nindexC", &nindexC, "nindexC/I");    // index2 for mapping
   newt->Branch("ccycle", &ccycle, "ccycle/I");       // chopper cycle
 
+  return newt;
+}
+
+TTree * createFNewTree() {
   // tree for mapping the real events with the voxel positions from GEANT4
 
   TFile *ffile = TFile::Open("cdt_new_cal.root", "recreate");
 
   if ((TTree *)ffile->Get("cdt_new_cal")) {
-    std::cout << "Found an old cal tree, I am going to delete it!" << std::endl;
+    std::cout << "Found old cal tree, deleting it!" << std::endl;
     gDirectory->Delete("cdt_new_cal");
     std::cout << "....Done!" << std::endl;
     std::cout << " " << std::endl;
   }
 
-  std::cout << "now I am going to create the new calibration tree!"
-            << std::endl;
-  TTree *fnewt = new TTree("cdt_new_cal", "cdt_new_cal");
+  std::cout << "Creating the new calibration tree!" << std::endl;
+  fnewt = new TTree("cdt_new_cal", "cdt_new_cal");
+  assert(fnewt != NULL);
   std::cout << "....Done!" << std::endl;
   std::cout << " " << std::endl;
-
-  double rad_c, lambda_c, lambda_c_wfm_corr, twotheta_c, phi_c, ntof_c;
-  double nvoxel_x, nvoxel_y, nvoxel_z, nangle;
-  int csumo, nc, nikS, nikC;
-  float dspacing_c_wfm, dspacing_c;
 
   fnewt->Branch("nikS", &nikS, "nikS/I");    // index1 used for mapping events
   fnewt->Branch("nikC", &nikC, "nikC/I");    // index2 used for mapping events
   fnewt->Branch("nc", &nc, "nc/I");          // counter number
   fnewt->Branch("csumo", &csumo, "csumo/I"); // sumo number
-  fnewt->Branch("nvoxel_x", &nvoxel_x,
-                "nvoxel_x/D"); // GEANT4 x-pos of voxel centre
-  fnewt->Branch("nvoxel_y", &nvoxel_y,
-                "nvoxel_y/D"); // GEANT4 y-pos of voxel centre
-  fnewt->Branch("nvoxel_z", &nvoxel_z,
-                "nvoxel_z/D"); // GEANT4 z-pos of voxel centre
-  fnewt->Branch("twotheta_c", &twotheta_c,
-                "twotheta_c/D"); // theta-angle of the GEANT4 voxel
-  fnewt->Branch("nangle", &nangle,
-                "nangle/D"); // inclination angle of the Boron layer
+  // GEANT4 x, y, z-pos of voxel centre
+  fnewt->Branch("nvoxel_x", &nvoxel_x, "nvoxel_x/D");
+  fnewt->Branch("nvoxel_y", &nvoxel_y, "nvoxel_y/D");
+  fnewt->Branch("nvoxel_z", &nvoxel_z, "nvoxel_z/D");
+  // theta-angle of the GEANT4 voxel
+  fnewt->Branch("twotheta_c", &twotheta_c, "twotheta_c/D");
+  // inclination angle of the Boron layer
+  fnewt->Branch("nangle", &nangle, "nangle/D");
   fnewt->Branch("phi_c", &phi_c, "phi_c/D"); // phi-angle of the GEANT4 voxel
-  fnewt->Branch("rad_c", &rad_c,
-                "rad_c/D"); // GEANT4 distance of the voxel centre to the sample
+  // GEANT4 distance of the voxel centre to the sample
+  fnewt->Branch("rad_c", &rad_c, "rad_c/D");
   fnewt->Branch("ntof_c", &ntof_c, "ntof_c/D"); // defined, but not used
-  fnewt->Branch("lambda_c", &lambda_c,
-                "lambda_c/D"); // lambda calculated by using the G4 position of
-                               // the voxel (normal operation mode)
-  fnewt->Branch("dspacing_c", &dspacing_c,
-                "dspacing_c/F"); // d_spacing calculated by using the G4
-                                 // position of the voxel (normal operation mode)
-  fnewt->Branch("lambda_c_wfm_corr", &lambda_c_wfm_corr,
-                "lambda_c_wfm_corr/D"); // lambda calculated by using the G4
-                                        // position of the voxel (WFM mode)
-  fnewt->Branch("dspacing_c_wfm", &dspacing_c_wfm,
-                "dspacing_c_wfm/F"); // d_spacing calculated by using the G4
-                                     // position of the voxel (WFM mode)
+  // lambda calculated using the G4 position of the voxel (normal operation mode)
+  fnewt->Branch("lambda_c", &lambda_c, "lambda_c/D");
+  // d_spacing calculated by using the G4 position of the voxel (normal operation mode)
+  fnewt->Branch("dspacing_c", &dspacing_c, "dspacing_c/F");
+  // lambda calculated by using the G4 position of the voxel (WFM mode)
+  fnewt->Branch("lambda_c_wfm_corr", &lambda_c_wfm_corr, "lambda_c_wfm_corr/D");
+  // d_spacing calculated by using the G4 position of the voxel (WFM mode)
+  fnewt->Branch("dspacing_c_wfm", &dspacing_c_wfm, "dspacing_c_wfm/F");
 
-  // used for the mapping of the electronics channels to detector voxels
-  // integers > 0 correspond to the wire layer number given in the 2nd column
-  // in the CDT file with channel mapping
+  ffile->cd(); /// \todo moved here from further down, could be a problem????
+  return fnewt;
+}
 
-  int s3[4][4] = {
-      {0, 2, -1, -1}, {1, 3, -1, -1}, {-1, -1, 4, 6}, {-1, -1, 5, 7}}; // sumo3
-  int s4[4][4] = {
-      {-1, 2, 6, 10}, {-1, 3, 7, 11}, {0, 4, 8, -1}, {1, 5, 9, -1}}; // sumo4
-  int s5[4][4] = {
-      {0, 4, 8, 12}, {1, 5, 9, 13}, {2, 6, 10, 14}, {3, 7, 11, 15}}; // sumo5
-  int s6[4][8] = {{0, -1, 4, 8, 12, 16, -1, -1},
-                  {1, -1, 5, 9, 13, 17, -1, -1},
-                  {-1, -1, 2, 6, 10, 14, -1, 18},
-                  {-1, -1, 3, 7, 11, 15, -1, 19}}; // sumo6
 
-  // time shifts and delays for the tof correction for events collected in WFM
-  // mode
 
-  signed long int tdelay = 0;
-  signed long int tshift[6] = {0, 2600, 4400, 6500, 9270, 11700};
-  signed long int tmin[6] = {9600, 21940, 33000, 42540, 51670, 60300};
-  signed long int tmax[6] = {20680, 31200, 40420, 48850, 57800, 70000};
-
-  for (Long64_t i = 0; i <= nevents; i++) {
-
-    tree->GetEntry(i);
-
-    vanode[i] = anode;
-    vcathode[i] = cathode;
-    vtime[i] = neutronTime;
-    vsumo[i] = sumo;
-    vmodule[i] = module;
-    vboardID[i] = boardID;
-    vchopperTime[i] = chopperTime;
-    vsubID[i] = subID;
-
-    //      std::cout<<"sumo ="<<vsumo[i]<<", module ="<<vmodule[i]<<" , boardID
-    //      ="<<boardID<<std::endl;
-
-    if (i % 100000 == 0)
-      printf("reading out the original tree.....%2.3f%%\n",
-             i * 100. / nevents);
-  }
-
-  // the raw data included in the 'cdt_ev' tree in cdt.root file must be sorted
-  // and reorganised.
-  // In the raw data the neutron and chopper events belong to different
-  // instances. In the following each neutron event will get attached the
-  // timestamp of the most recent chopper event the new data will be stored an a
-  // new tree called 'cdt_new'.
-
-  for (Long64_t i = 1; i <= nevents; i++) {
-
-    if (vboardID[i] == 0) {
-      vboardID[i] = vboardID[i - 1];
-      vsumo[i] = vsumo[i - 1];
-    }
-
-    if (vchopperTime[i] == 0) {
-      vchopperTime[i] = vchopperTime[i - 1];
-    }
-  }
-
-  // time corrections and conversion from ASIC channels to segment, counter,
-  // wire and strip number
-
-  file->cd();
-
-  for (Long64_t i = 0; i <= nevents; i++) {
-
-    if (vchopperTime[i] != 0 && vtime[i] != 0) {
-
-      ntime = vtime[i];
-      nanode = vanode[i];
-      ncathode = vcathode[i];
-      nboardID = vboardID[i];
-      nchopperTime = vchopperTime[i];
-      nsubID = vsubID[i];
-      nsumo = vsumo[i];
-      nmodule = vmodule[i];
-      nevent = i;
-      nmult = 0;
-
-      tdiff_wfm = ntime - nchopperTime - 71428; // 71428 = 1/14
-      ntof_wfm = tdiff_wfm; // tof for calculating lambda in wfm mode
-
-      //			tdiff = ntime-nchopperTime + 145230; // tcorr
-      //from FP's file (Dtt1 in normal mode) 			tdiff = ntime-nchopperTime +
-      //145230; // tcorr from FP's file (Dtt1 in normal mode)
-      tdiff = ntime - nchopperTime +
-              238100; // tcorr from FP's file (Dtt1 in normal mode)
-                      //			tdiff = ntime-nchopperTime + 238100 + 145230; //
-                      //tcorr from FP's file (Dtt1 in normal mode)
-      ntof = tdiff;
-      ccycle = nchopperTime / 744468;
-
-      factor_a = floor(ncathode / 16);
-      factor_b = floor(nanode / 16);
-
-      switch (nsumo) {
-
-      case 3:
-        nw_layer = s3[factor_b][factor_a];
-        break;
-
-      case 4:
-        nw_layer = s4[factor_b][factor_a];
-        break;
-
-      case 5:
-        nw_layer = s5[factor_b][factor_a];
-        break;
-
-      case 6:
-        nw_layer = s6[factor_b][factor_a];
-        break;
-      }
-
-      nsegment = floor(nw_layer / 2) + 1;
-      ncounter = nw_layer % 2 + 1;
-
-      nwire = nanode - 16 * factor_b + 1;
-      nstrip = ncathode - 16 * factor_a + 1;
-
-      nindexS = nsumo * 100000 + nmodule * 100 + ncounter;
-      nindexC = nsegment * 100000 + nstrip * 100 + nwire;
-
-      //			this is the neutron tof used when running in
-      //normal mode
-
-      if (ntof > 744468) {
-
-        ntof = ntof - 744468;
-      }
-
-      //			this is the neutron tof used when running in WFM
-      //mode
-
-      if (ntof_wfm < 0) {
-
-        ntof_wfm = ntof_wfm + 744468;
-      }
-
-      for (int ii = 0; ii <= 5; ii++) {
-
-        if (ntof_wfm >= 10 * tmin[ii] && ntof_wfm <= 10 * tmax[ii]) {
-
-          ntof_wfm_corr = ntof_wfm - 10 * tshift[ii];
-        }
-      }
-
-      newt->Fill();
-    }
-
-    if (i % 100000 == 0)
-      printf("    now writing the new tree.....%2.3f%%\n", i * 100. / nevents);
-  }
-
-  // the nmult variable isn't working yet
-
-  /*unsigned int b1,b2;
-
-    for (Long64_t i=0; i<=nevents; i++){
-
-          newt->GetEntry(i);
-
-          b1 = nboardID[i];
-
-          newt->GetEntry(i+1);
-
-          b2 = nboardID[i+1];
-
-                  if (b1 == b2) {
-                          mult++;
-
-                          } else {
-                                  mult = 1;
-                                  }
-
-                  nmult[i+1] = mult;
-
-                  }*/
-
-  newt->Write(
-      0, TObject::kOverwrite); // because I don't want to create a new key for
-                               // the new tree every time I execute the code
-  std::cout << "Writing the new cal tree...done" << std::endl;
-
-  std::cout << "number of entries in the new tree is " << newt->GetEntries()
-            << std::endl;
-  std::cout << " " << std::endl;
-
-  delete[] vanode;
-  delete[] vcathode;
-  delete[] vsumo;
-  delete[] vmodule;
-  delete[] vboardID;
-  delete[] vsubID;
-  delete[] vchopperTime;
-  delete[] vtime;
-
-  // in this part of the code the coordinates x,y,z of the voxel centre become
-  // part of the neutron event. The 'endcap_lookup.root' file was created in the
-  // GEANT4 simulation of EndCap. In the simulation the detector was positioned
-  // to match the position of the EndCap detector in the V20 test at HZB. this
-  // was the calculated voxels positions match the positions of the detector
-  // voxels in the real detector.
-
-  TFile *lfile = TFile::Open("endcap_lookup.root", "read");
-
-  if (lfile->IsOpen())
-    printf("endcap_lookup.root file created in GEANT4 opened successfully\n");
-
-  printf("...now matching the data....please be patient!\n");
-
-  // call the event tree
-
-  TTree *ltree = (TTree *)lfile->Get("lookup_tree");
-
+void calculateGeometry(int NumberOfEvents) {
   // each entry in the lookup_tree corresponds to a voxel that is uniquely
   // identified through the following information (included as branches (leaves)
-  // in the root tree) 			sumo 			wire 			seg 			counter 			strip 			module 			indexi 			indexj 			posx
-  // 			posy
-  // 			posz
+  // in the root tree) 			sumo 			wire 			seg 			counter 			strip
+  //			module 			indexi 			indexj 			posx 			posy 			posz
 
   TBranch *nx = ltree->GetBranch("posx");
   TLeaf *mx = nx->GetLeaf("posx");
@@ -433,14 +254,6 @@ void analysis(std::string filename) {
   TBranch *zz = ltree->GetBranch("counter");
   TLeaf *zza = zz->GetLeaf("counter");
 
-  // next line creates an index using the leaves "indexj" and "indexi" of the
-  // 'lookup_tree' tree. indexi and indexj were defined ReadLookupTable.C (used
-  // for the GEANT4 data) as:
-  //	indexi = sumo*100000+module*100+counter;
-  //	indexj = seg*100000+strip*100+wire;
-
-  ltree->BuildIndex("indexj", "indexi");
-
   // The next for-loop goes over all events in the event tree with the new
   // calibrated data ('cdt_new') created above and selects the leaves 'nikC' and
   // 'nikS'. In case 'nikC' is equal with 'indexi' and 'nikS' is equal to
@@ -449,9 +262,7 @@ void analysis(std::string filename) {
   // experimental data will be synchronised. Unfortunately this is the most
   // time-consuming part of the code, but I don't know a better way of doing it.
 
-  const int noev = newt->GetEntries();
-
-  for (Long64_t k = 0; k < noev; k++) {
+  for (Long64_t k = 0; k < NumberOfEvents; k++) {
 
     newt->GetEntry(k);
 
@@ -466,7 +277,7 @@ void analysis(std::string filename) {
     //	        std::cout<<"event number in lookup rootfile = "<<ev<<std::endl;
     //	        std::cout<<"event number in cdt rootfile = "<<k<<std::endl;
 
-    ffile->cd();
+    //ffile->cd(); /// \todo moved to createFNewTree() - could be a problem??
 
     // gets the coordinates of the detector voxel
 
@@ -482,6 +293,9 @@ void analysis(std::string filename) {
 
     rad_c = sqrt(nvoxel_x * nvoxel_x + nvoxel_y * nvoxel_y +
                  nvoxel_z * nvoxel_z); // in mm
+
+    assert(rad_c != 0);
+    assert(rad_c <= 5000); // example only, add sensible value
 
     //	     twotheta_c = 90.+atan(nvoxel_z/nvoxel_x)*180/pi; // for GPS
 
@@ -516,16 +330,10 @@ void analysis(std::string filename) {
 
     fnewt->Fill();
   }
+}
 
-  ffile->cd();
 
-  // Don't create a new key for the new tree every time the code is executed
-  fnewt->Write(0, TObject::kOverwrite);
-  std::cout << "Writing the new cal tree...done" << std::endl;
-
-  std::cout << "number of entries in the new tree is " << noev << std::endl;
-  std::cout << " " << std::endl;
-
+void plotBranches() {
   // the are ROOT command lines to plot various branches
 
   //		cdt_new->AddFriend("cdt_new_cal","cdt_new_cal.root")
@@ -586,6 +394,245 @@ void analysis(std::string filename) {
           newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416799");
           canT->cd(4);
           newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416697");*/
+}
+
+
+// ------------------------------------------------------------------
+void analysis(std::string filename) {
+
+  tree = readFileCreateTree(filename);
+
+  newt = createNewTree();
+
+  fnewt = createFNewTree();
+
+  /// \todo bug? This will run through values 0 to nevents (one more than
+  /// the number of events.
+  for (Long64_t i = 0; i <= nevents; i++) {
+
+    tree->GetEntry(i);
+
+    vanode[i] = anode;
+    vcathode[i] = cathode;
+    vtime[i] = neutronTime;
+    vsumo[i] = sumo;
+    vmodule[i] = module;
+    vboardID[i] = boardID;
+    vchopperTime[i] = chopperTime;
+    vsubID[i] = subID;
+
+    //      std::cout<<"sumo ="<<vsumo[i]<<", module ="<<vmodule[i]<<" , boardID
+    //      ="<<boardID<<std::endl;
+
+    if (i % 100000 == 0) {
+      printf("reading out the original tree.....%2.3f%%\n", i * 100. / nevents);
+    }
+  }
+
+  // the raw data included in the 'cdt_ev' tree in cdt.root file must be sorted
+  // and reorganised.
+  // In the raw data the neutron and chopper events belong to different
+  // instances. In the following each neutron event will get attached the
+  // timestamp of the most recent chopper event the new data will be stored an a
+  // new tree called 'cdt_new'.
+
+  ///\todo bug? runs through values 1 to nevents, array only goes
+  /// from 0 to nevents -1
+  for (Long64_t i = 1; i <= nevents; i++) {
+
+    if (vboardID[i] == 0) {
+      vboardID[i] = vboardID[i - 1];
+      vsumo[i] = vsumo[i - 1];
+    }
+
+    if (vchopperTime[i] == 0) {
+      vchopperTime[i] = vchopperTime[i - 1];
+    }
+  }
+
+  // time corrections and conversion from ASIC channels to segment, counter,
+  // wire and strip number
+
+  // file->cd(); // moved to function readFileCreateTree()
+
+  ///\todo bug? 0 to nevents, arrau only allow nevents -1
+  for (Long64_t i = 0; i <= nevents; i++) {
+
+    if (vchopperTime[i] != 0 && vtime[i] != 0) {
+
+      ntime = vtime[i];
+      nanode = vanode[i];
+      ncathode = vcathode[i];
+      nboardID = vboardID[i];
+      nchopperTime = vchopperTime[i];
+      nsubID = vsubID[i];
+      nsumo = vsumo[i];
+      nmodule = vmodule[i];
+      nevent = i;
+      nmult = 0;
+
+      tdiff_wfm = ntime - nchopperTime - 71428; // 71428 = 1/14
+      ntof_wfm = tdiff_wfm; // tof for calculating lambda in wfm mode
+
+      //			tdiff = ntime-nchopperTime + 145230; // tcorr
+      //from FP's file (Dtt1 in normal mode) 			tdiff = ntime-nchopperTime +
+      //145230; // tcorr from FP's file (Dtt1 in normal mode)
+
+
+      // tcorr from FP's file (Dtt1 in normal mode)
+      //			tdiff = ntime-nchopperTime + 238100 + 145230; //
+      //tcorr from FP's file (Dtt1 in normal mode)
+      tdiff = ntime - nchopperTime + 238100;
+
+      ntof = tdiff;
+      ccycle = nchopperTime / 744468;
+
+      factor_a = floor(ncathode / 16);
+      factor_b = floor(nanode / 16);
+
+      switch (nsumo) {
+
+      case 3:
+        nw_layer = s3[factor_b][factor_a];
+        break;
+
+      case 4:
+        nw_layer = s4[factor_b][factor_a];
+        break;
+
+      case 5:
+        nw_layer = s5[factor_b][factor_a];
+        break;
+
+      case 6:
+        nw_layer = s6[factor_b][factor_a];
+        break;
+      }
+
+      nsegment = floor(nw_layer / 2) + 1;
+      ncounter = nw_layer % 2 + 1;
+
+      ///\todo replace hardcoded value 16 with const variable
+      nwire = nanode - 16 * factor_b + 1;
+      nstrip = ncathode - 16 * factor_a + 1;
+
+      ///\todo replace hardcoded value 100000 (and 100) with const variable
+      /// this looks like ditigal geometry specific to the hardware?
+      nindexS = nsumo * 100000 + nmodule * 100 + ncounter;
+      nindexC = nsegment * 100000 + nstrip * 100 + nwire;
+
+      //			this is the neutron tof used when running in
+      //normal mode
+
+      ///\todo change hardcoded value 744468 to a variable
+      if (ntof > 744468) {
+        ntof = ntof - 744468;
+      }
+
+      //			this is the neutron tof used when running in WFM
+      //mode
+
+      if (ntof_wfm < 0) {
+        ntof_wfm = ntof_wfm + 744468;
+      }
+
+      for (int ii = 0; ii <= 5; ii++) {
+
+        if (ntof_wfm >= 10 * tmin[ii] && ntof_wfm <= 10 * tmax[ii]) {
+
+          ntof_wfm_corr = ntof_wfm - 10 * tshift[ii];
+        }
+      }
+
+      newt->Fill();
+    }
+
+    if (i % 100000 == 0)
+      printf("    now writing the new tree.....%2.3f%%\n", i * 100. / nevents);
+  }
+
+  // the nmult variable isn't working yet
+
+  /*unsigned int b1,b2;
+
+    for (Long64_t i=0; i<=nevents; i++){
+
+          newt->GetEntry(i);
+
+          b1 = nboardID[i];
+
+          newt->GetEntry(i+1);
+
+          b2 = nboardID[i+1];
+
+                  if (b1 == b2) {
+                          mult++;
+
+                          } else {
+                                  mult = 1;
+                                  }
+
+                  nmult[i+1] = mult;
+
+                  }*/
+
+  // because I don't want to create a new key for
+  // the new tree every time I execute the code
+  newt->Write(0, TObject::kOverwrite);
+
+  std::cout << "Writing the new cal tree...done" << std::endl;
+
+  std::cout << "number of entries in the new tree is " << newt->GetEntries()
+            << std::endl;
+  std::cout << " " << std::endl;
+
+
+  deleteArrays();
+
+  // in this part of the code the coordinates x,y,z of the voxel centre become
+  // part of the neutron event. The 'endcap_lookup.root' file was created in the
+  // GEANT4 simulation of EndCap. In the simulation the detector was positioned
+  // to match the position of the EndCap detector in the V20 test at HZB. this
+  // was the calculated voxels positions match the positions of the detector
+  // voxels in the real detector.
+
+  TFile *lfile = TFile::Open("endcap_lookup.root", "read");
+
+  if (lfile->IsOpen()) {
+    printf("endcap_lookup.root file created in GEANT4 opened successfully\n");
+  }
+
+  printf("...now matching the data....please be patient!\n");
+
+  // call the event tree
+
+  ltree = (TTree *)lfile->Get("lookup_tree");
+
+
+
+  // next line creates an index using the leaves "indexj" and "indexi" of the
+  // 'lookup_tree' tree. indexi and indexj were defined ReadLookupTable.C (used
+  // for the GEANT4 data) as:
+  //	indexi = sumo*100000+module*100+counter;
+  //	indexj = seg*100000+strip*100+wire;
+
+  ltree->BuildIndex("indexj", "indexi");
+
+  const int noev = newt->GetEntries();
+  calculateGeometry(noev);
+
+
+  //ffile->cd(); /// \todo moved to createFNewTree() - could be a problem?
+
+  // Don't create a new key for the new tree every time the code is executed
+  fnewt->Write(0, TObject::kOverwrite);
+  std::cout << "Writing the new cal tree...done" << std::endl;
+
+  std::cout << "number of entries in the new tree is " << noev << std::endl;
+  std::cout << " " << std::endl;
+
+
+  plotBranches();
 }
 
 

@@ -12,6 +12,7 @@ set(EXTRA_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR}/cmake)
 # General configuration
 #=============================================================================
 include(${EXTRA_MODULES_DIR}/EnsureBuildType.cmake)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic") 
 
 
 #=============================================================================
