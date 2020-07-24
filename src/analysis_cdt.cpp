@@ -27,6 +27,7 @@
 int nevents;
 
 // Tree-related
+TFile *file;
 TTree * tree{nullptr};
 Int_t cathode, anode, subID;
 Int_t module, sumo;
@@ -34,6 +35,7 @@ UInt_t boardID;
 ULong64_t chopperTime, neutronTime;
 
 // newt related
+TFile *ffile;
 TTree * newt{nullptr};
 int ncathode, nanode, nmult, nsubID, nevent;
 int nmodule, nsumo, nw_layer, nstrip;
@@ -91,7 +93,7 @@ void deleteArrays() {
 
 
 TTree * readFileCreateTree(std::string filename) {
-  TFile *file = TFile::Open(filename.c_str(), "update");
+  file = TFile::Open(filename.c_str(), "update");
 
   TTree *tree = (TTree *)file->Get("cdt_ev");
 
@@ -126,7 +128,6 @@ TTree * readFileCreateTree(std::string filename) {
     std::cout << "....Done!" << std::endl;
     std::cout << " " << std::endl;
   }
-  file->cd(); // moved from further down
   return tree;
 }
 
@@ -193,7 +194,7 @@ TTree * createNewTree() {
 TTree * createFNewTree() {
   // tree for mapping the real events with the voxel positions from GEANT4
 
-  TFile *ffile = TFile::Open("cdt_new_cal.root", "recreate");
+  ffile = TFile::Open("cdt_new_cal.root", "recreate");
 
   if ((TTree *)ffile->Get("cdt_new_cal")) {
     std::cout << "Found old cal tree, deleting it!" << std::endl;
@@ -233,7 +234,6 @@ TTree * createFNewTree() {
   // d_spacing calculated by using the G4 position of the voxel (WFM mode)
   fnewt->Branch("dspacing_c_wfm", &dspacing_c_wfm, "dspacing_c_wfm/F");
 
-  ffile->cd(); /// \todo moved here from further down, could be a problem????
   return fnewt;
 }
 
@@ -277,7 +277,7 @@ void calculateGeometry(int NumberOfEvents) {
     //	        std::cout<<"event number in lookup rootfile = "<<ev<<std::endl;
     //	        std::cout<<"event number in cdt rootfile = "<<k<<std::endl;
 
-    //ffile->cd(); /// \todo moved to createFNewTree() - could be a problem??
+    ffile->cd();
 
     // gets the coordinates of the detector voxel
 
@@ -453,7 +453,7 @@ void analysis(std::string filename) {
   // time corrections and conversion from ASIC channels to segment, counter,
   // wire and strip number
 
-  // file->cd(); // moved to function readFileCreateTree()
+  file->cd();
 
   ///\todo bug? 0 to nevents, arrau only allow nevents -1
   for (Long64_t i = 0; i <= nevents; i++) {
@@ -622,7 +622,7 @@ void analysis(std::string filename) {
   calculateGeometry(noev);
 
 
-  //ffile->cd(); /// \todo moved to createFNewTree() - could be a problem?
+  ffile->cd();
 
   // Don't create a new key for the new tree every time the code is executed
   fnewt->Write(0, TObject::kOverwrite);
