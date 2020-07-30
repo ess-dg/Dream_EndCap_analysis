@@ -86,6 +86,10 @@ TTree * readFileCreateTree(std::string filename) {
   nevents = tree->GetEntries();
   allocateArrays(nevents);
 
+  std::cout << "number of entries in the original tree is " << nevents
+            << std::endl;
+  std::cout << " " << std::endl;
+
 
   // Tree containing the raw events (created at the previous step by running
   // CreateCDTTree.C)
@@ -330,25 +334,27 @@ void plotBranches() {
 
   // *************and some automatic plotting
 
-  TCanvas *can = new TCanvas("can", "can", 100, 100, 700, 700);
+	TCanvas *can=new TCanvas("can","can",100,100,700,700);
 
-  gStyle->SetOptTitle(1);
-  gStyle->SetOptStat(1);
+	gStyle->SetOptTitle(1);
+	gStyle->SetOptStat(1);
 
-  can->SetFillColor(0);
-  can->SetGrid();
-  Float_t small = 1e-5;
+	can->SetFillColor(0);
+	can->SetGrid();
+	Float_t small=1e-5;
 
-  can->Divide(1, 3, small, small);
-  can->ToggleEventStatus();
+	can->Divide(2,2,small,small);
+	can->ToggleEventStatus();
 
-  can->cd(1);
-  newt->Draw("ntof_wfm/10000>>tt(800,-1,80)", "", "");
-  //	newt->Draw("ncathode:nanode","nsumo==3","colz");
-  can->cd(2);
-  newt->Draw("ntof_wfm_corr/10000>>tt1(800,-1,80)", "", "");
-  can->cd(3);
-  newt->Draw("ntof/10000>>tt2(1000,1,100)", "", "");
+	can->cd(1);
+	newt->Draw("ntof_wfm/10000>>tt(1000,-20,80)","","");
+	can->cd(2);
+	newt->Draw("ntof_wfm_corr/10000>>tt1(1000,-20,80)","","");
+	can->cd(3);
+	newt->Draw("tdiff/10000>>tt2(1200,-20,100)","","");
+	can->cd(4);
+	newt->Draw("ntof/10000>>tt3(1200,-20,100)","","");
+
   //	newt->Draw("ncathode:nanode","nsumo==4","colz");
   //	can->cd(3);
   //	newt->Draw("ncathode:nanode","nsumo==5","colz");
@@ -387,7 +393,9 @@ void analysis(std::string filename) {
 
   /// \todo bug? This will run through values 0 to nevents (one more than
   /// the number of events.
-  for (Long64_t i = 0; i <= nevents; i++) {
+  /// edit Irina 29-07-2020: fixed by allowing i to go up to < nevents
+
+  for (Long64_t i = 0; i < nevents; i++) {
 
     tree->GetEntry(i);
 
@@ -417,7 +425,9 @@ void analysis(std::string filename) {
 
   ///\todo bug? runs through values 1 to nevents, array only goes
   /// from 0 to nevents -1
-  for (Long64_t i = 1; i <= nevents; i++) {
+  /// edit Irina 29-07-2020: fixed by allowing i to go up to < nevents
+
+  for (Long64_t i = 1; i < nevents; i++) {
 
     if (vreadout[i].boardID == 0) {
       vreadout[i].boardID = vreadout[i - 1].boardID;
@@ -435,7 +445,9 @@ void analysis(std::string filename) {
   file->cd();
 
   ///\todo bug? 0 to nevents, arrau only allow nevents -1
-  for (Long64_t i = 0; i <= nevents; i++) {
+  /// edit Irina 29-07-2020: fixed by allowing i to go up to < nevents
+
+  for (Long64_t i = 0; i < nevents; i++) {
 
     if (vreadout[i].chopperTime != 0 && vreadout[i].time != 0) {
 
@@ -448,23 +460,10 @@ void analysis(std::string filename) {
       nreadout.sumo = vreadout[i].sumo;
       nreadout.module = vreadout[i].module;
       nevent = i;
-      //nmult = 0;
 
-      tdiff_wfm = ntime - nreadout.chopperTime - 71428; // 71428 = 1/14
-      ntof_wfm = tdiff_wfm; // tof for calculating lambda in wfm mode
-
-      //			tdiff = ntime-nchopperTime + 145230; // tcorr
-      //from FP's file (Dtt1 in normal mode) 			tdiff = ntime-nchopperTime +
-      //145230; // tcorr from FP's file (Dtt1 in normal mode)
-
-
-      // tcorr from FP's file (Dtt1 in normal mode)
-      //			tdiff = ntime-nchopperTime + 238100 + 145230; //
-      //tcorr from FP's file (Dtt1 in normal mode)
-      tdiff = ntime - nreadout.chopperTime + 238100;
-
-      ntof = tdiff;
-      ccycle = nreadout.chopperTime / 744468;
+ 	  tdiff = ntime - nreadout.chopperTime;  // tof in normal operation mode, choppers synchronised
+	  ntof = tdiff + 238100; // 238100 = 1/42 Hz; tof in normal operation mode, but with the choppers out of sync
+	  ntof_wfm = tdiff - 71428; // 71428 = 1/14, tof in wfm mode
 
       factor_a = floor(nreadout.cathode / 16);
       factor_b = floor(nreadout.anode / 16);
@@ -530,36 +529,12 @@ void analysis(std::string filename) {
       printf("    now writing the new tree.....%2.3f%%\n", i * 100. / nevents);
   }
 
-  // the nmult variable isn't working yet
-
-  /*unsigned int b1,b2;
-
-    for (Long64_t i=0; i<=nevents; i++){
-
-          newt->GetEntry(i);
-
-          b1 = nboardID[i];
-
-          newt->GetEntry(i+1);
-
-          b2 = nboardID[i+1];
-
-                  if (b1 == b2) {
-                          mult++;
-
-                          } else {
-                                  mult = 1;
-                                  }
-
-                  nmult[i+1] = mult;
-
-                  }*/
 
   // because I don't want to create a new key for
   // the new tree every time I execute the code
   newt->Write(0, TObject::kOverwrite);
 
-  std::cout << "Writing the new cal tree...done" << std::endl;
+  std::cout << "Writing the cdt_new cal tree...done" << std::endl;
 
   std::cout << "number of entries in the new tree is " << newt->GetEntries()
             << std::endl;
@@ -607,7 +582,8 @@ void analysis(std::string filename) {
   fnewt->Write(0, TObject::kOverwrite);
   std::cout << "Writing the new cal tree...done" << std::endl;
 
-  std::cout << "number of entries in the new tree is " << noev << std::endl;
+  std::cout << " " << std::endl;
+  std::cout << "number of entries in the cdt_new_cal tree is " << noev << std::endl;
   std::cout << " " << std::endl;
 
 
