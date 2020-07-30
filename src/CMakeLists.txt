@@ -14,8 +14,9 @@ add_executable( ${read_bin_name} ${read_bin_src} )
 
 #
 # analysis
+set(analysis_inc analysis_cdt.h)
 set(analysis_src analysis_cdt.cpp)
-add_executable(${analysis_name} ${analysis_src})
+add_executable(${analysis_name} ${analysis_src} ${analysis_inc})
 target_link_libraries(${analysis_name} RIO Core Tree Gpad)
 
 

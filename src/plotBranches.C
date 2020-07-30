@@ -1,3 +1,5 @@
+/// Comment about uppercase C 
+
 void plotBranches() {
   // the are ROOT command lines to plot various branches
 
@@ -27,7 +29,7 @@ void plotBranches() {
 
 	can->Divide(2,2,small,small);
 	can->ToggleEventStatus();
-	
+
 	can->cd(1);
 	cdt_new->Draw("ntof_wfm/10000>>tt(1000,-20,80)","","");
 	can->cd(2);
@@ -62,4 +64,3 @@ void plotBranches() {
           canT->cd(4);
           newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416697");*/
 }
-
