@@ -20,7 +20,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <vector>
 
 
 // Moved variables
@@ -37,13 +37,15 @@ ULong64_t chopperTime, neutronTime;
 // newt related
 TFile *ffile;
 TTree * newt{nullptr};
-int ncathode, nanode, nmult, nsubID, nevent;
-int nmodule, nsumo, nw_layer, nstrip;
+CDTReadout nreadout;
+
+//int nmult;
+int nevent;
+int nw_layer, nstrip;
 int ncounter, nsegment, factor_a, factor_b, nwire;
 int nindexC, nindexS, ccycle;
 
-signed int nboardID;
-signed long int nchopperTime, ntime;
+signed long int ntime;
 signed long int ntof_wfm, tdiff_wfm, ntof, tdiff, ntof_wfm_corr;
 
 // fnewt related
@@ -56,39 +58,16 @@ float dspacing_c_wfm, dspacing_c;
 // ltree relatd
 TTree * ltree{nullptr};
 
-
-// Should be in a struct ? allocated in allocateArrays()
-int *vanode;
-int *vcathode;
-int *vsubID;
-int *vsumo;
-int *vmodule;
-unsigned long int *vtime;
-unsigned long int *vchopperTime;
-unsigned int *vboardID;
+std::vector<CDTReadout> vreadout;
 
 // End Moved
 
 void allocateArrays(int nevents) {
-  vanode = new int[nevents]();
-  vcathode = new int[nevents]();
-  vsubID = new int[nevents]();
-  vsumo = new int[nevents]();
-  vmodule = new int[nevents]();
-  vtime = new unsigned long int[nevents]();
-  vchopperTime = new unsigned long int[nevents]();
-  vboardID = new unsigned int[nevents]();
+  vreadout.reserve(nevents);
 }
 
 void deleteArrays() {
-  delete[] vanode;
-  delete[] vcathode;
-  delete[] vsubID;
-  delete[] vsumo;
-  delete[] vmodule;
-  delete[] vtime;
-  delete[] vchopperTime;
-  delete[] vboardID;
+  vreadout.clear();
 }
 
 
@@ -158,7 +137,7 @@ TTree * createNewTree() {
   */
 
   newt->Branch("ntime", &ntime, "ntime/L"); // neutron time stamp
-  newt->Branch("nchopperTime", &nchopperTime,
+  newt->Branch("nchopperTime", &nreadout.chopperTime,
                "nchopperTime/L");        // chopper timestamp
   newt->Branch("ntof", &ntof, "ntof/L"); // neutron time of flight
   newt->Branch("ntof_wfm", &ntof_wfm,
@@ -168,13 +147,13 @@ TTree * createNewTree() {
   newt->Branch("tdiff", &tdiff, "tdiff/L"); // divide by 10000 to get it in ms
   newt->Branch("tdiff_wfm", &tdiff_wfm,
                "tdiff_wfm/L"); // divide by 10000 to get it in ms
-  newt->Branch("ncathode", &ncathode, "ncathode/I"); // cathode plane number
-  newt->Branch("nanode", &nanode, "nanode/I");       // anode plane number
-  newt->Branch("nsubID", &nsubID, "nsubID/I");       // nsubID, not used
-  newt->Branch("nsumo", &nsumo, "nsumo/I");          // sumo number
-  newt->Branch("nmodule", &nmodule,
+  newt->Branch("ncathode", &nreadout.cathode, "ncathode/I"); // cathode plane number
+  newt->Branch("nanode", &nreadout.anode, "nanode/I");       // anode plane number
+  newt->Branch("nsubID", &nreadout.subID, "nsubID/I");       // nsubID, not used
+  newt->Branch("nsumo", &nreadout.sumo, "nsumo/I");          // sumo number
+  newt->Branch("nmodule", &nreadout.module,
                "nmodule/I");                // module number (12-deg sector)
-  newt->Branch("nmult", &nmult, "nmult/I"); // multiplicity event, not used
+  //newt->Branch("nmult", &nmult, "nmult/I"); // multiplicity event, not used
   newt->Branch("nsegment", &nsegment, "nsegment/I"); // segment number
   newt->Branch("ncounter", &ncounter,
                "ncounter/I"); // counter number (1 for counter left of common
@@ -182,7 +161,7 @@ TTree * createNewTree() {
   newt->Branch("nwire", &nwire, "nwire/I");          // wire number
   newt->Branch("nstrip", &nstrip, "nstrip/I");       // strip number
   newt->Branch("nevent", &nevent, "nevent/I");       // event counter
-  newt->Branch("nboardID", &nboardID, "nboardID/i"); // board no => sumo number
+  newt->Branch("nboardID", &nreadout.boardID, "nboardID/i"); // board no => sumo number
   newt->Branch("nw_layer", &nw_layer, "nw_layer/I"); // wire layer#
   newt->Branch("nindexS", &nindexS, "nindexS/I");    // index1 for mapping
   newt->Branch("nindexC", &nindexC, "nindexC/I");    // index2 for mapping
@@ -268,7 +247,7 @@ void calculateGeometry(int NumberOfEvents) {
 
     nikS = nindexS;
     nikC = nindexC;
-    csumo = nsumo;
+    csumo = nreadout.sumo;
 
     Int_t ev = ltree->GetEntryNumberWithIndex(nikC, nikS);
 
@@ -412,14 +391,14 @@ void analysis(std::string filename) {
 
     tree->GetEntry(i);
 
-    vanode[i] = anode;
-    vcathode[i] = cathode;
-    vtime[i] = neutronTime;
-    vsumo[i] = sumo;
-    vmodule[i] = module;
-    vboardID[i] = boardID;
-    vchopperTime[i] = chopperTime;
-    vsubID[i] = subID;
+    vreadout[i].anode = anode;
+    vreadout[i].cathode = cathode;
+    vreadout[i].time = neutronTime;
+    vreadout[i].sumo = sumo;
+    vreadout[i].module = module;
+    vreadout[i].boardID = boardID;
+    vreadout[i].chopperTime = chopperTime;
+    vreadout[i].subID = subID;
 
     //      std::cout<<"sumo ="<<vsumo[i]<<", module ="<<vmodule[i]<<" , boardID
     //      ="<<boardID<<std::endl;
@@ -440,13 +419,13 @@ void analysis(std::string filename) {
   /// from 0 to nevents -1
   for (Long64_t i = 1; i <= nevents; i++) {
 
-    if (vboardID[i] == 0) {
-      vboardID[i] = vboardID[i - 1];
-      vsumo[i] = vsumo[i - 1];
+    if (vreadout[i].boardID == 0) {
+      vreadout[i].boardID = vreadout[i - 1].boardID;
+      vreadout[i].sumo = vreadout[i - 1].sumo;
     }
 
-    if (vchopperTime[i] == 0) {
-      vchopperTime[i] = vchopperTime[i - 1];
+    if (vreadout[i].chopperTime == 0) {
+      vreadout[i].chopperTime = vreadout[i - 1].chopperTime;
     }
   }
 
@@ -458,20 +437,20 @@ void analysis(std::string filename) {
   ///\todo bug? 0 to nevents, arrau only allow nevents -1
   for (Long64_t i = 0; i <= nevents; i++) {
 
-    if (vchopperTime[i] != 0 && vtime[i] != 0) {
+    if (vreadout[i].chopperTime != 0 && vreadout[i].time != 0) {
 
-      ntime = vtime[i];
-      nanode = vanode[i];
-      ncathode = vcathode[i];
-      nboardID = vboardID[i];
-      nchopperTime = vchopperTime[i];
-      nsubID = vsubID[i];
-      nsumo = vsumo[i];
-      nmodule = vmodule[i];
+      nreadout.time = vreadout[i].time;
+      nreadout.anode = vreadout[i].anode;
+      nreadout.cathode = vreadout[i].cathode;
+      nreadout.boardID = vreadout[i].boardID;
+      nreadout.chopperTime = vreadout[i].chopperTime;
+      nreadout.subID = vreadout[i].subID;
+      nreadout.sumo = vreadout[i].sumo;
+      nreadout.module = vreadout[i].module;
       nevent = i;
-      nmult = 0;
+      //nmult = 0;
 
-      tdiff_wfm = ntime - nchopperTime - 71428; // 71428 = 1/14
+      tdiff_wfm = ntime - nreadout.chopperTime - 71428; // 71428 = 1/14
       ntof_wfm = tdiff_wfm; // tof for calculating lambda in wfm mode
 
       //			tdiff = ntime-nchopperTime + 145230; // tcorr
@@ -482,15 +461,15 @@ void analysis(std::string filename) {
       // tcorr from FP's file (Dtt1 in normal mode)
       //			tdiff = ntime-nchopperTime + 238100 + 145230; //
       //tcorr from FP's file (Dtt1 in normal mode)
-      tdiff = ntime - nchopperTime + 238100;
+      tdiff = ntime - nreadout.chopperTime + 238100;
 
       ntof = tdiff;
-      ccycle = nchopperTime / 744468;
+      ccycle = nreadout.chopperTime / 744468;
 
-      factor_a = floor(ncathode / 16);
-      factor_b = floor(nanode / 16);
+      factor_a = floor(nreadout.cathode / 16);
+      factor_b = floor(nreadout.anode / 16);
 
-      switch (nsumo) {
+      switch (nreadout.sumo) {
 
       case 3:
         nw_layer = s3[factor_b][factor_a];
@@ -513,12 +492,12 @@ void analysis(std::string filename) {
       ncounter = nw_layer % 2 + 1;
 
       ///\todo replace hardcoded value 16 with const variable
-      nwire = nanode - 16 * factor_b + 1;
-      nstrip = ncathode - 16 * factor_a + 1;
+      nwire = nreadout.anode - 16 * factor_b + 1;
+      nstrip = nreadout.cathode - 16 * factor_a + 1;
 
       ///\todo replace hardcoded value 100000 (and 100) with const variable
       /// this looks like ditigal geometry specific to the hardware?
-      nindexS = nsumo * 100000 + nmodule * 100 + ncounter;
+      nindexS = nreadout.sumo * 100000 + nreadout.module * 100 + ncounter;
       nindexC = nsegment * 100000 + nstrip * 100 + nwire;
 
       //			this is the neutron tof used when running in

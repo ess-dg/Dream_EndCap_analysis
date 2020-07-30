@@ -29,3 +29,15 @@ signed long int tdelay = 0;
 signed long int tshift[6] = {0, 2600, 4400, 6500, 9270, 11700};
 signed long int tmin[6] = {9600, 21940, 33000, 42540, 51670, 60300};
 signed long int tmax[6] = {20680, 31200, 40420, 48850, 57800, 70000};
+
+
+struct CDTReadout {
+  int anode;
+  int cathode;
+  int subID;
+  int sumo;
+  int module;
+  unsigned long int time;
+  unsigned long int chopperTime;
+  unsigned int boardID;
+};
