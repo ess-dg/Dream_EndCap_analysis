@@ -148,7 +148,7 @@ TTree * createNewTree() {
 
   */
 
-  newt->Branch("ntime", &ntime, "ntime/L"); // neutron time stamp
+  newt->Branch("ntime", &nreadout.time, "ntime/L"); // neutron time stamp
   newt->Branch("nchopperTime", &nreadout.chopperTime,
                "nchopperTime/L");        // chopper timestamp
   newt->Branch("ntof", &ntof, "ntof/L"); // neutron time of flight
@@ -402,7 +402,7 @@ void analysis(std::string filename) {
       nreadout.module = vreadout[i].module;
       nevent = i;
 
- 	  tdiff = ntime - nreadout.chopperTime;  // tof in normal operation mode, choppers synchronised
+ 	  tdiff = nreadout.time - nreadout.chopperTime;  // tof in normal operation mode, choppers synchronised
 	  ntof = tdiff + 238100; // 238100 = 1/42 Hz; tof in normal operation mode, but with the choppers out of sync
 	  ntof_wfm = tdiff - 71428; // 71428 = 1/14, tof in wfm mode
 
