@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <analysis_cdt.h>
+#include <Geometry.h>
 #include <TCanvas.h>
 #include <TFile.h>
 #include <TLeaf.h>
@@ -22,7 +23,16 @@
 #include <stdlib.h>
 #include <vector>
 
+// time shifts and delays for the tof correction for events collected in WFM
+// mode
 
+signed long int tdelay = 0;
+signed long int tshift[6] = {0, 2600, 4400, 6500, 9270, 11700};
+signed long int tmin[6] = {9600, 21940, 33000, 42540, 51670, 60300};
+signed long int tmax[6] = {20680, 31200, 40420, 48850, 57800, 70000};
+
+
+Geometry geometry;
 // Moved variables
 int nevents;
 
@@ -39,11 +49,9 @@ TFile *ffile;
 TTree * newt{nullptr};
 CDTReadout nreadout;
 
-//int nmult;
 int nevent;
-int nw_layer, nstrip;
-int ncounter, nsegment, factor_a, factor_b, nwire;
-int nindexC, nindexS, ccycle;
+CDTGeometry cdtgeometry;
+
 
 signed long int ntime;
 signed long int ntof_wfm, tdiff_wfm, ntof, tdiff, ntof_wfm_corr;
@@ -158,18 +166,18 @@ TTree * createNewTree() {
   newt->Branch("nmodule", &nreadout.module,
                "nmodule/I");                // module number (12-deg sector)
   //newt->Branch("nmult", &nmult, "nmult/I"); // multiplicity event, not used
-  newt->Branch("nsegment", &nsegment, "nsegment/I"); // segment number
-  newt->Branch("ncounter", &ncounter,
+  newt->Branch("nsegment", &cdtgeometry.nsegment, "nsegment/I"); // segment number
+  newt->Branch("ncounter", &cdtgeometry.ncounter,
                "ncounter/I"); // counter number (1 for counter left of common
                               // cathode, 2 for right)
-  newt->Branch("nwire", &nwire, "nwire/I");          // wire number
-  newt->Branch("nstrip", &nstrip, "nstrip/I");       // strip number
+  newt->Branch("nwire", &cdtgeometry.nwire, "nwire/I");          // wire number
+  newt->Branch("nstrip", &cdtgeometry.nstrip, "nstrip/I");       // strip number
   newt->Branch("nevent", &nevent, "nevent/I");       // event counter
   newt->Branch("nboardID", &nreadout.boardID, "nboardID/i"); // board no => sumo number
-  newt->Branch("nw_layer", &nw_layer, "nw_layer/I"); // wire layer#
-  newt->Branch("nindexS", &nindexS, "nindexS/I");    // index1 for mapping
-  newt->Branch("nindexC", &nindexC, "nindexC/I");    // index2 for mapping
-  newt->Branch("ccycle", &ccycle, "ccycle/I");       // chopper cycle
+  newt->Branch("nw_layer", &cdtgeometry.nw_layer, "nw_layer/I"); // wire layer#
+  newt->Branch("nindexS", &cdtgeometry.nindexS, "nindexS/I");    // index1 for mapping
+  newt->Branch("nindexC", &cdtgeometry.nindexC, "nindexC/I");    // index2 for mapping
+  //newt->Branch("ccycle", &ccycle, "ccycle/I");       // chopper cycle
 
   return newt;
 }
@@ -249,8 +257,8 @@ void calculateGeometry(int NumberOfEvents) {
 
     newt->GetEntry(k);
 
-    nikS = nindexS;
-    nikC = nindexC;
+    nikS = cdtgeometry.nindexS;
+    nikC = cdtgeometry.nindexC;
     csumo = nreadout.sumo;
 
     Int_t ev = ltree->GetEntryNumberWithIndex(nikC, nikS);
@@ -314,73 +322,6 @@ void calculateGeometry(int NumberOfEvents) {
     fnewt->Fill();
   }
 }
-
-
-void plotBranches() {
-  // the are ROOT command lines to plot various branches
-
-  //		cdt_new->AddFriend("cdt_new_cal","cdt_new_cal.root")
-  //      cdt_new->Scan("ntime:nchopperTime:tdiff:ccycle:ntof","")
-  //		cdt_new->Draw("tdiff/10000>>tt(800,0,80)","","")
-  //		cdt_new->Draw("ntof/10000>>tt(900,-10,80)","","")
-  //		cdt_new->Draw("ntof_wfm/10000>>tt(900,-10,80)","","")
-  //		cdt_new->Draw("lambda_c>>tt(1000,0,10)","","")
-  //		cdt_new->Draw("lambda_c_wfm_corr>>tt(1000,0,10)","","")
-  //		cdt_new->Draw("nvoxel_y:nvoxel_z","nsumo<=4","")
-  //		cdt_new->Draw("dspacing_c>>tt(600,0,6)","nsumo==6","")
-  //		cdt_new->Draw("twotheta_c>>tt(350,135,170)","","")
-  //		cdt_new->Draw("nvoxel_y:nvoxel_z>>tt(500,-1600,-1100,1000,200,1200)","","colz")
-  //		cdt_new->Draw("nvoxel_y:nvoxel_x>>tt(300,-100,200,1000,200,1200)","","colz")
-
-  // *************and some automatic plotting
-
-	TCanvas *can=new TCanvas("can","can",100,100,700,700);
-
-	gStyle->SetOptTitle(1);
-	gStyle->SetOptStat(1);
-
-	can->SetFillColor(0);
-	can->SetGrid();
-	Float_t small=1e-5;
-
-	can->Divide(2,2,small,small);
-	can->ToggleEventStatus();
-
-	can->cd(1);
-	newt->Draw("ntof_wfm/10000>>tt(1000,-20,80)","","");
-	can->cd(2);
-	newt->Draw("ntof_wfm_corr/10000>>tt1(1000,-20,80)","","");
-	can->cd(3);
-	newt->Draw("tdiff/10000>>tt2(1200,-20,100)","","");
-	can->cd(4);
-	newt->Draw("ntof/10000>>tt3(1200,-20,100)","","");
-
-  //	newt->Draw("ncathode:nanode","nsumo==4","colz");
-  //	can->cd(3);
-  //	newt->Draw("ncathode:nanode","nsumo==5","colz");
-  //	can->cd(4);
-  //	newt->Draw("ncathode:nanode","nsumo==6","colz");
-
-  /*	TCanvas *canT=new TCanvas("canT","canT",100,100,800,800);
-
-          gStyle->SetOptTitle(1);
-          gStyle->SetOptStat(1);
-
-          canT->SetFillColor(0);
-          canT->SetGrid();
-
-          canT->Divide(2,2,small,small);
-
-          canT->cd(1);
-          newt->Draw("(ntime-nchopperTime)/10e6>>tt(2000,-0.1,0.1)","nboardID==1418045");
-          canT->cd(2);
-          newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416964");
-          canT->cd(3);
-          newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416799");
-          canT->cd(4);
-          newt->Draw("(ntime-nchopperTime)/10e6","nboardID==1416697");*/
-}
-
 
 // ------------------------------------------------------------------
 void analysis(std::string filename) {
@@ -465,39 +406,18 @@ void analysis(std::string filename) {
 	  ntof = tdiff + 238100; // 238100 = 1/42 Hz; tof in normal operation mode, but with the choppers out of sync
 	  ntof_wfm = tdiff - 71428; // 71428 = 1/14, tof in wfm mode
 
-      factor_a = floor(nreadout.cathode / 16);
-      factor_b = floor(nreadout.anode / 16);
 
-      switch (nreadout.sumo) {
+    // ###
+      geometry.calculate(nreadout, cdtgeometry);
 
-      case 3:
-        nw_layer = s3[factor_b][factor_a];
-        break;
-
-      case 4:
-        nw_layer = s4[factor_b][factor_a];
-        break;
-
-      case 5:
-        nw_layer = s5[factor_b][factor_a];
-        break;
-
-      case 6:
-        nw_layer = s6[factor_b][factor_a];
-        break;
-      }
-
-      nsegment = floor(nw_layer / 2) + 1;
-      ncounter = nw_layer % 2 + 1;
-
-      ///\todo replace hardcoded value 16 with const variable
-      nwire = nreadout.anode - 16 * factor_b + 1;
-      nstrip = nreadout.cathode - 16 * factor_a + 1;
+      // ###
 
       ///\todo replace hardcoded value 100000 (and 100) with const variable
       /// this looks like ditigal geometry specific to the hardware?
-      nindexS = nreadout.sumo * 100000 + nreadout.module * 100 + ncounter;
-      nindexC = nsegment * 100000 + nstrip * 100 + nwire;
+      cdtgeometry.nindexS = nreadout.sumo * 100000 + nreadout.module * 100
+            + cdtgeometry.ncounter;
+      cdtgeometry.nindexC = cdtgeometry.nsegment * 100000
+            + cdtgeometry.nstrip * 100 + cdtgeometry.nwire;
 
       //			this is the neutron tof used when running in
       //normal mode
@@ -585,9 +505,6 @@ void analysis(std::string filename) {
   std::cout << " " << std::endl;
   std::cout << "number of entries in the cdt_new_cal tree is " << noev << std::endl;
   std::cout << " " << std::endl;
-
-  /// \todo delete this as it has no effect, .....
-  plotBranches();
 }
 
 
